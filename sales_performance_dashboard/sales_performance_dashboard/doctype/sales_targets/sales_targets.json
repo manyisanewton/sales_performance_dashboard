@@ -1,0 +1,336 @@
+{
+    "actions": [],
+    "autoname": "format:ST-{target_level}-{####}",
+    "creation": "2024-01-01 00:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "target_level",
+        "level_column_break",
+        "company",
+        "department",
+        "department_column_break",
+        "parent_department",
+        "employee",
+        "date_section",
+        "start_date",
+        "date_column_break",
+        "end_date",
+        "targets_section",
+        "summary_section",
+        "achieved_total",
+        "summary_col_break_1",
+        "daily_target_current",
+        "summary_col_break_2",
+        "monthly_target_current",
+        "summary_row_2",
+        "quarterly_target_current",
+        "summary_col_break_3",
+        "yearly_target_current",
+        "summary_col_break_4",
+        "owner_display",
+        "base_targets_section",
+        "yearly_target",
+        "base_col_break_1",
+        "quarterly_target",
+        "base_col_break_2",
+        "monthly_target",
+        "base_row_2",
+        "weekly_target",
+        "base_col_break_3",
+        "daily_target",
+        "progress_section",
+        "yearly_progress",
+        "progress_col_break_1",
+        "quarterly_progress",
+        "progress_col_break_2",
+        "monthly_progress",
+        "progress_row_2",
+        "weekly_progress",
+        "progress_col_break_3",
+        "daily_progress"
+    ],
+    "fields": [
+        {
+            "fieldname": "target_level",
+            "fieldtype": "Select",
+            "label": "Target Level",
+            "options": "Company\nDepartment\nIndividual",
+            "in_list_view": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "level_column_break",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "company",
+            "fieldtype": "Link",
+            "label": "Company",
+            "options": "Company",
+            "in_list_view": 1,
+            "depends_on": "eval:doc.target_level=='Company'",
+            "mandatory_depends_on": "eval:doc.target_level=='Company'"
+        },
+        {
+            "fieldname": "department",
+            "fieldtype": "Link",
+            "label": "Department",
+            "options": "Department",
+            "in_list_view": 1,
+            "depends_on": "eval:doc.target_level=='Department' || doc.target_level=='Individual'",
+            "mandatory_depends_on": "eval:doc.target_level=='Department' || doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "department_column_break",
+            "fieldtype": "Column Break",
+            "depends_on": "eval:doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "parent_department",
+            "fieldtype": "Link",
+            "label": "Parent Department",
+            "options": "Department",
+            "read_only": 1,
+            "depends_on": "eval:doc.target_level=='Department' || doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "employee",
+            "fieldtype": "Link",
+            "label": "Employee",
+            "options": "Employee",
+            "in_list_view": 1,
+            "depends_on": "eval:doc.target_level=='Individual' && doc.department",
+            "mandatory_depends_on": "eval:doc.target_level=='Individual' && doc.department"
+        },
+        {
+            "fieldname": "achieved_total",
+            "fieldtype": "Currency",
+            "label": "Total Achieved",
+            "in_list_view": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "summary_section",
+            "fieldtype": "Section Break",
+            "label": "Summary"
+        },
+        {
+            "fieldname": "summary_col_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "daily_target_current",
+            "fieldtype": "Currency",
+            "label": "Daily Target (Current)",
+            "in_list_view": 1,
+            "read_only": 1,
+            "depends_on": "eval:doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "summary_col_break_2",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "monthly_target_current",
+            "fieldtype": "Currency",
+            "label": "Monthly Target (Current)",
+            "in_list_view": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "summary_row_2",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "quarterly_target_current",
+            "fieldtype": "Currency",
+            "label": "Quarterly Target (Current)",
+            "in_list_view": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "summary_col_break_3",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "yearly_target_current",
+            "fieldtype": "Currency",
+            "label": "Yearly Target (Current)",
+            "in_list_view": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "summary_col_break_4",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "owner_display",
+            "fieldtype": "Data",
+            "label": "Owner Name",
+            "in_list_view": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "date_section",
+            "fieldtype": "Section Break",
+            "label": "Target Period"
+        },
+        {
+            "fieldname": "start_date",
+            "fieldtype": "Date",
+            "label": "Start Date",
+            "in_list_view": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "date_column_break",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "end_date",
+            "fieldtype": "Date",
+            "label": "End Date",
+            "in_list_view": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "targets_section",
+            "fieldtype": "Section Break",
+            "label": "Targets"
+        },
+        {
+            "fieldname": "base_targets_section",
+            "fieldtype": "Section Break",
+            "label": "Targets (Base)"
+        },
+        {
+            "fieldname": "yearly_target",
+            "fieldtype": "Currency",
+            "label": "Yearly Target"
+        },
+        {
+            "fieldname": "base_col_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "quarterly_target",
+            "fieldtype": "Currency",
+            "label": "Quarterly Target"
+        },
+        {
+            "fieldname": "base_col_break_2",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "monthly_target",
+            "fieldtype": "Currency",
+            "label": "Monthly Target"
+        },
+        {
+            "fieldname": "base_row_2",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "weekly_target",
+            "fieldtype": "Currency",
+            "label": "Weekly Target",
+            "depends_on": "eval:doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "base_col_break_3",
+            "fieldtype": "Column Break",
+            "depends_on": "eval:doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "daily_target",
+            "fieldtype": "Currency",
+            "label": "Daily Target",
+            "depends_on": "eval:doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "progress_section",
+            "fieldtype": "Section Break",
+            "label": "Progress"
+        },
+        {
+            "fieldname": "yearly_progress",
+            "fieldtype": "Percent",
+            "label": "Yearly Progress",
+            "in_list_view": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "progress_col_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "quarterly_progress",
+            "fieldtype": "Percent",
+            "label": "Quarterly Progress",
+            "in_list_view": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "progress_col_break_2",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "monthly_progress",
+            "fieldtype": "Percent",
+            "label": "Monthly Progress",
+            "in_list_view": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "progress_row_2",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "weekly_progress",
+            "fieldtype": "Percent",
+            "label": "Weekly Progress",
+            "in_list_view": 1,
+            "read_only": 1,
+            "depends_on": "eval:doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "progress_col_break_3",
+            "fieldtype": "Column Break",
+            "depends_on": "eval:doc.target_level=='Individual'"
+        },
+        {
+            "fieldname": "daily_progress",
+            "fieldtype": "Percent",
+            "label": "Daily Progress",
+            "in_list_view": 1,
+            "read_only": 1,
+            "depends_on": "eval:doc.target_level=='Individual'"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2024-01-01 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Sales Performance Dashboard",
+    "name": "Sales Targets",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": []
+}
