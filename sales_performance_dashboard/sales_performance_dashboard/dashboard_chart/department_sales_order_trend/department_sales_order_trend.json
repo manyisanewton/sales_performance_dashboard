@@ -1,0 +1,15 @@
+{
+ "chart_name": "Department Sales Order Trend",
+ "chart_type": "Custom",
+ "doctype": "Dashboard Chart",
+ "is_public": 1,
+ "is_standard": 0,
+ "module": "Sales Performance Dashboard",
+ "name": "Department Sales Order Trend",
+ "source": "Department Sales Order Trend",
+ "timeseries": 0,
+ "time_interval": "Monthly",
+ "timespan": "Last Year",
+ "type": "Line",
+ "filters_json": "{}"
+}

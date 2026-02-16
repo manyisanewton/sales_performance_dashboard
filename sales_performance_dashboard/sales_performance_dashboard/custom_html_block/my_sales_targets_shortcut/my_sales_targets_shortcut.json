@@ -1,0 +1,9 @@
+{
+ "doctype": "Custom HTML Block",
+ "name": "My Sales Targets Shortcut",
+ "module": "Sales Performance Dashboard",
+ "private": 0,
+ "html": "<div class=\"psd-target-shortcut\"><div class=\"psd-target-shortcut-title\"><span class=\"h4\"><b>Targets</b></span></div><a href=\"#\" class=\"psd-target-shortcut-link\">Sales Targets <span aria-hidden=\"true\">↗</span></a></div>",
+ "script": "const method = \"sales_performance_dashboard.api.personal_dashboard_api.get_my_sales_target_route\";\nconst link = root_element.querySelector('.psd-target-shortcut-link');\n\nlink.addEventListener('click', (e) => {\n\te.preventDefault();\n\tfrappe.call({ method }).then((r) => {\n\t\tconst data = r.message || {};\n\t\tif (data.has_target && data.target_name) {\n\t\t\tfrappe.set_route('Form', 'Sales Targets', data.target_name);\n\t\t\treturn;\n\t\t}\n\t\tconst defaults = { target_level: 'Individual' };\n\t\tif (data.employee) {\n\t\t\tdefaults.employee = data.employee;\n\t\t}\n\t\tfrappe.new_doc('Sales Targets', defaults);\n\t});\n});\n",
+ "style": ".psd-target-shortcut{padding:6px 2px 2px}.psd-target-shortcut-title{margin-bottom:8px}.psd-target-shortcut-link{display:inline-flex;align-items:center;gap:6px;font-size:16px;color:var(--text-color);text-decoration:none}.psd-target-shortcut-link:hover{text-decoration:underline}"
+}

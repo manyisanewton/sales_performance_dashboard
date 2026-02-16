@@ -249,3 +249,7 @@ scheduler_events = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
+# Installation
+# ------------
+
+after_install = "sales_performance_dashboard.sales_performance_dashboard.setup.create_number_cards.create_all_cards"

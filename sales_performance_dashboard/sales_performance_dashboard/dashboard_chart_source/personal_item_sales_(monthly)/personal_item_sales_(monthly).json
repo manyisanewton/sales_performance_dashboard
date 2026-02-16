@@ -1,0 +1,13 @@
+{
+ "creation": "2026-02-15 11:41:39.011945",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart Source",
+ "idx": 0,
+ "modified": "2026-02-15 11:41:39.011945",
+ "modified_by": "Administrator",
+ "module": "Sales Performance Dashboard",
+ "name": "Personal Item Sales (Monthly)",
+ "owner": "Administrator",
+ "source_name": "Personal Item Sales (Monthly)",
+ "timeseries": 0
+}

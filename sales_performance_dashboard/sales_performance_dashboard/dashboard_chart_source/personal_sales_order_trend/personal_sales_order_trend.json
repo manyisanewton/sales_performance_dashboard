@@ -1,0 +1,13 @@
+{
+ "creation": "2026-02-15 11:41:38.685004",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart Source",
+ "idx": 0,
+ "modified": "2026-02-15 11:41:38.685004",
+ "modified_by": "Administrator",
+ "module": "Sales Performance Dashboard",
+ "name": "Personal Sales Order Trend",
+ "owner": "Administrator",
+ "source_name": "Personal Sales Order Trend",
+ "timeseries": 1
+}

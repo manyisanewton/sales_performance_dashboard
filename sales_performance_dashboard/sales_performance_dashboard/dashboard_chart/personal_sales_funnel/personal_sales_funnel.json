@@ -1,0 +1,12 @@
+{
+ "chart_name": "Personal Sales Funnel",
+ "chart_type": "Custom",
+ "doctype": "Dashboard Chart",
+ "is_public": 1,
+ "is_standard": 0,
+ "module": "Sales Performance Dashboard",
+ "name": "Personal Sales Funnel",
+ "source": "Personal Sales Funnel",
+ "type": "Bar",
+ "filters_json": "{}"
+}

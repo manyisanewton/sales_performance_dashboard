@@ -1,0 +1,15 @@
+{
+ "creation": "2026-02-12 14:20:00.000000",
+ "docstatus": 0,
+ "doctype": "Custom HTML Block",
+ "html": "<div class=\"dkc-wrap\"><h3>Customers</h3><div class=\"dkc-grid dkc-grid-4\"><div class=\"dkc-card\"><div class=\"dkc-label\">NEW CUSTOMERS (WEEK)</div><div class=\"dkc-val dkc-green\" data-key=\"new_customers_week\"></div></div><div class=\"dkc-card\"><div class=\"dkc-label\">CUSTOMERS SERVED (WEEK)</div><div class=\"dkc-val dkc-blue\" data-key=\"customers_served_week\"></div></div><div class=\"dkc-card\"><div class=\"dkc-label\">NEW CUSTOMERS (MONTH)</div><div class=\"dkc-val dkc-green\" data-key=\"new_customers_month\"></div></div><div class=\"dkc-card\"><div class=\"dkc-label\">CUSTOMERS SERVED (MONTH)</div><div class=\"dkc-val dkc-blue\" data-key=\"customers_served_month\"></div></div></div></div>",
+ "idx": 0,
+ "modified": "2026-02-12 14:20:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sales Performance Dashboard",
+ "name": "Department KPI Customers",
+ "owner": "Administrator",
+ "private": 0,
+ "script": "const kpiMethod = \"sales_performance_dashboard.api.department_dashboard_api.get_department_kpis\";\nconst storageKey = 'spd_department_dashboard_department';\nconst riskStorageKey = 'spd_department_risk_window';\nconst storageDate = 'spd_department_reference_date';\n\nfunction render(data) {\n  root_element.querySelectorAll('[data-key]').forEach((el) => {\n    const key = el.getAttribute('data-key');\n    el.textContent = `${cint(data[key] || 0)}`;\n  });\n}\n\nfunction loadKpis() {\n  const department = localStorage.getItem(storageKey) || '';\n  const risk_window_days = cint(localStorage.getItem(riskStorageKey) || 14);\n  const reference_date = localStorage.getItem(storageDate) || frappe.datetime.get_today();\n  frappe.call({ method: kpiMethod, args: { department, risk_window_days, reference_date } }).then((r) => render(r.message || {}));\n}\n\nwindow.addEventListener('spd-department-changed', loadKpis);\nloadKpis();",
+ "style": ".dkc-wrap{display:flex;flex-direction:column;gap:10px}.dkc-wrap h3{margin:0;font-size:24px;font-weight:700}.dkc-grid{display:grid;gap:10px}.dkc-grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.dkc-card{border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;min-height:82px;background:#fff}.dkc-label{font-size:11px;color:#52525b;font-weight:600;letter-spacing:.3px;margin-bottom:7px}.dkc-val{font-size:20px;font-weight:700;line-height:1.1}.dkc-green{color:#15803d}.dkc-blue{color:#1d4ed8}@media (max-width:1200px){.dkc-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:768px){.dkc-grid-4{grid-template-columns:1fr}}"
+}

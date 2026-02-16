@@ -1,0 +1,12 @@
+{
+ "chart_name": "Personal Item Sales (Monthly)",
+ "chart_type": "Custom",
+ "doctype": "Dashboard Chart",
+ "is_public": 1,
+ "is_standard": 0,
+ "module": "Sales Performance Dashboard",
+ "name": "Personal Item Sales (Monthly)",
+ "source": "Personal Item Sales (Monthly)",
+ "type": "Bar",
+ "filters_json": "{}"
+}

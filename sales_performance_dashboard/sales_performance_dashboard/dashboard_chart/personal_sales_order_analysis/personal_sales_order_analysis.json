@@ -1,0 +1,13 @@
+{
+ "chart_name": "Personal Sales Order Analysis",
+ "chart_type": "Custom",
+ "doctype": "Dashboard Chart",
+ "is_public": 1,
+ "is_standard": 0,
+ "module": "Sales Performance Dashboard",
+ "name": "Personal Sales Order Analysis",
+ "source": "Personal Sales Order Analysis",
+ "type": "Donut",
+ "custom_options": "{\"colors\":[\"#9ad0f5\",\"#28a745\"]}",
+ "filters_json": "{}"
+}

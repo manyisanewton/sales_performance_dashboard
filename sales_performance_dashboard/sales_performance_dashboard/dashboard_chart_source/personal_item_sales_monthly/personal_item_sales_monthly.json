@@ -1,0 +1,7 @@
+{
+ "doctype": "Dashboard Chart Source",
+ "module": "Sales Performance Dashboard",
+ "name": "Personal Item Sales (Monthly)",
+ "source_name": "Personal Item Sales (Monthly)",
+ "timeseries": 0
+}
