@@ -2,6 +2,7 @@
 
 import frappe
 from frappe.utils import add_days, add_months, cint, flt, get_first_day, get_last_day, getdate, nowdate
+from collections import defaultdict
 
 
 DEMO_PATTERN = "SPD-DEMO-%"
@@ -587,4 +588,331 @@ def get_company_revenue_waterfall(
         "total_outstanding": round(total_outstanding, 2),
         "revenue_at_risk": round(revenue_at_risk, 2),
         "risk_window_days": risk_days,
+    }
+
+
+def _trend_buckets(view_mode="Monthly", reference_date=None):
+    ref = getdate(reference_date or nowdate())
+    mode = (view_mode or "Monthly").strip().title()
+    buckets = []
+
+    if mode == "Daily":
+        # Last 30 days ending at reference date.
+        for i in range(29, -1, -1):
+            d = add_days(ref, -i)
+            buckets.append((d, d, d.strftime("%d %b")))
+        return buckets
+
+    if mode == "Quarterly":
+        # Last 8 quarters ending at reference quarter.
+        current_q_start_month = (((ref.month - 1) // 3) * 3) + 1
+        current_q_start = getdate(f"{ref.year}-{current_q_start_month:02d}-01")
+        for i in range(7, -1, -1):
+            q_start = add_months(current_q_start, -(i * 3))
+            q_end = get_last_day(add_months(q_start, 2))
+            q = ((q_start.month - 1) // 3) + 1
+            buckets.append((q_start, q_end, f"Q{q} {q_start.year}"))
+        return buckets
+
+    if mode == "Yearly":
+        # Last 5 years ending at reference year.
+        for i in range(4, -1, -1):
+            y = ref.year - i
+            buckets.append((getdate(f"{y}-01-01"), getdate(f"{y}-12-31"), str(y)))
+        return buckets
+
+    # Monthly default: last 12 months ending at reference month.
+    current_month_start = get_first_day(ref)
+    for i in range(11, -1, -1):
+        month_start = add_months(current_month_start, -i)
+        month_end = get_last_day(month_start)
+        buckets.append((month_start, month_end, month_start.strftime("%b %Y")))
+    return buckets
+
+
+def _departments_for_gross_margin():
+    rows = frappe.db.sql(
+        """
+        SELECT DISTINCT e.department
+        FROM `tabEmployee` e
+        INNER JOIN `tabDepartment` d ON d.name = e.department
+        WHERE IFNULL(e.department, '') != ''
+          AND IFNULL(e.status, '') != 'Left'
+          AND IFNULL(d.is_group, 0) = 0
+        ORDER BY e.department
+        """,
+        as_dict=True,
+    )
+    return [r.department for r in rows if r.get("department")]
+
+
+def _company_gross_margin_for_period(company, department, from_date, to_date):
+    where_sql, params = _invoice_conditions(
+        company=company,
+        department=department,
+        from_date=from_date,
+        to_date=to_date,
+    )
+    row = frappe.db.sql(
+        f"""
+        SELECT
+            COALESCE(SUM(sii.base_net_amount), 0) AS sales,
+            COALESCE(SUM(IFNULL(sii.stock_qty, 0) * IFNULL(sii.incoming_rate, 0)), 0) AS cogs
+        FROM `tabSales Invoice` si
+        INNER JOIN `tabSales Invoice Item` sii ON sii.parent = si.name
+        WHERE {where_sql}
+        """,
+        params,
+        as_dict=True,
+    )
+    sales = flt((row[0] or {}).get("sales", 0)) if row else 0
+    cogs = flt((row[0] or {}).get("cogs", 0)) if row else 0
+    if sales <= 0:
+        return 0.0
+    return round(((sales - cogs) / sales) * 100, 2)
+
+
+@frappe.whitelist()
+def get_company_gross_margin_trend(
+    company=None,
+    department=None,
+    view_mode="Monthly",
+    reference_date=None,
+):
+    buckets = _trend_buckets(view_mode=view_mode, reference_date=reference_date)
+    labels = [b[2] for b in buckets]
+
+    # Always return a single series:
+    # - if department is selected, that department trend
+    # - otherwise, overall company trend
+    series_name = department or "Total"
+    values = []
+    for start_date, end_date, _ in buckets:
+        values.append(
+            _company_gross_margin_for_period(
+                company=company,
+                department=department or None,
+                from_date=start_date,
+                to_date=end_date,
+            )
+        )
+
+    return {"labels": labels, "datasets": [{"name": series_name, "values": values}]}
+
+
+@frappe.whitelist()
+def get_company_payment_delay_cost(
+    company=None,
+    department=None,
+    reference_date=None,
+    view_mode=None,
+    annual_financing_rate=18,
+    top_limit=6,
+):
+    del view_mode  # Not required for overdue aging as-of snapshot.
+    top_limit = max(3, min(cint(top_limit) if top_limit else 6, 12))
+    annual_financing_rate = flt(annual_financing_rate or 18)
+    as_of = getdate(reference_date or nowdate())
+
+    where_sql, params = _invoice_conditions(
+        company=company,
+        department=department,
+        from_date=None,
+        to_date=None,
+    )
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            si.name AS invoice,
+            si.customer,
+            si.outstanding_amount,
+            si.due_date,
+            DATEDIFF(%(as_of)s, si.due_date) AS days_overdue
+        FROM `tabSales Invoice` si
+        WHERE {where_sql}
+          AND si.outstanding_amount > 0
+          AND si.due_date IS NOT NULL
+          AND si.due_date < %(as_of)s
+        """,
+        {**params, "as_of": as_of},
+        as_dict=True,
+    )
+
+    if not rows:
+        return {
+            "as_of": str(as_of),
+            "annual_financing_rate": round(annual_financing_rate, 2),
+            "overdue_outstanding": 0,
+            "estimated_delay_cost": 0,
+            "cost_pct_of_overdue": 0,
+            "daily_financing_cost": 0,
+            "avg_overdue_days": 0,
+            "buckets": [
+                {"label": "0-30", "amount": 0, "cost": 0, "count": 0},
+                {"label": "31-60", "amount": 0, "cost": 0, "count": 0},
+                {"label": "61-90", "amount": 0, "cost": 0, "count": 0},
+                {"label": "90+", "amount": 0, "cost": 0, "count": 0},
+            ],
+            "top_customers": [],
+        }
+
+    rate_per_day = annual_financing_rate / 100 / 365
+    buckets = {
+        "0-30": {"label": "0-30", "amount": 0.0, "cost": 0.0, "count": 0},
+        "31-60": {"label": "31-60", "amount": 0.0, "cost": 0.0, "count": 0},
+        "61-90": {"label": "61-90", "amount": 0.0, "cost": 0.0, "count": 0},
+        "90+": {"label": "90+", "amount": 0.0, "cost": 0.0, "count": 0},
+    }
+    customer_cost = defaultdict(lambda: {"amount": 0.0, "cost": 0.0, "count": 0})
+
+    overdue_outstanding = 0.0
+    estimated_delay_cost = 0.0
+    weighted_days = 0.0
+
+    for row in rows:
+        amount = flt(row.outstanding_amount)
+        days = max(cint(row.days_overdue), 0)
+        cost = amount * rate_per_day * days
+        overdue_outstanding += amount
+        estimated_delay_cost += cost
+        weighted_days += (amount * days)
+
+        if days <= 30:
+            key = "0-30"
+        elif days <= 60:
+            key = "31-60"
+        elif days <= 90:
+            key = "61-90"
+        else:
+            key = "90+"
+
+        buckets[key]["amount"] += amount
+        buckets[key]["cost"] += cost
+        buckets[key]["count"] += 1
+
+        customer = row.customer or "Unknown"
+        customer_cost[customer]["amount"] += amount
+        customer_cost[customer]["cost"] += cost
+        customer_cost[customer]["count"] += 1
+
+    avg_overdue_days = (weighted_days / overdue_outstanding) if overdue_outstanding > 0 else 0
+    daily_financing_cost = overdue_outstanding * rate_per_day
+    cost_pct_of_overdue = (estimated_delay_cost / overdue_outstanding * 100) if overdue_outstanding > 0 else 0
+
+    bucket_rows = [buckets["0-30"], buckets["31-60"], buckets["61-90"], buckets["90+"]]
+    for b in bucket_rows:
+        b["amount"] = round(b["amount"], 2)
+        b["cost"] = round(b["cost"], 2)
+
+    top_customers = []
+    for customer, agg in customer_cost.items():
+        top_customers.append(
+            {
+                "customer": customer,
+                "amount": round(agg["amount"], 2),
+                "cost": round(agg["cost"], 2),
+                "count": int(agg["count"]),
+                "cost_pct": round((agg["cost"] / estimated_delay_cost * 100), 2) if estimated_delay_cost > 0 else 0,
+            }
+        )
+    top_customers.sort(key=lambda d: d["cost"], reverse=True)
+    top_customers = top_customers[:top_limit]
+
+    return {
+        "as_of": str(as_of),
+        "annual_financing_rate": round(annual_financing_rate, 2),
+        "overdue_outstanding": round(overdue_outstanding, 2),
+        "estimated_delay_cost": round(estimated_delay_cost, 2),
+        "cost_pct_of_overdue": round(cost_pct_of_overdue, 2),
+        "daily_financing_cost": round(daily_financing_cost, 2),
+        "avg_overdue_days": round(avg_overdue_days, 1),
+        "buckets": bucket_rows,
+        "top_customers": top_customers,
+    }
+
+
+@frappe.whitelist()
+def get_company_target_slippage(
+    company=None,
+    department=None,
+    slippage_mode="Monthly",
+    reference_date=None,
+    view_mode=None,
+):
+    ref = getdate(reference_date or nowdate())
+    mode = (slippage_mode or view_mode or "Monthly").strip().title()
+    period_start, period_end = _view_range(mode, ref)
+    effective_ref = min(ref, period_end)
+
+    target_value, target_label = _company_scope_target(
+        company=company,
+        department=department,
+        view_mode=mode,
+        reference_date=ref,
+    )
+
+    expected_label = target_label
+    actual_label_map = {
+        "Daily": "Collected Today",
+        "Monthly": "Collected (Month)",
+        "Quarterly": "Collected (Quarter)",
+        "Yearly": "Collected (Year)",
+    }
+    actual_label = actual_label_map.get(mode, "Collected (Period)")
+
+    where_sql, params = _invoice_conditions(
+        company=company,
+        department=department,
+        from_date=period_start,
+        to_date=effective_ref,
+    )
+    row = frappe.db.sql(
+        f"""
+        SELECT COALESCE(SUM(si.grand_total - si.outstanding_amount), 0) AS collected
+        FROM `tabSales Invoice` si
+        WHERE {where_sql}
+        """,
+        params,
+        as_dict=True,
+    )
+    actual_by_today = flt((row[0] or {}).get("collected", 0)) if row else 0
+    expected_by_today = round(flt(target_value), 2)
+
+    slippage_amount = round(actual_by_today - expected_by_today, 2)
+    pace_pct = round((actual_by_today / expected_by_today) * 100, 2) if expected_by_today > 0 else 0
+
+    if expected_by_today <= 0:
+        status = "No Target"
+    elif pace_pct >= 100:
+        status = "Ahead"
+    elif pace_pct >= 95:
+        status = "On Pace"
+    else:
+        status = "Behind"
+
+    if slippage_amount >= 0:
+        chart_labels = ["Expected Pace", "Ahead"]
+        chart_values = [round(expected_by_today, 2), round(slippage_amount, 2)]
+        chart_colors = ["#93c5fd", "#16a34a"]
+    else:
+        chart_labels = ["Actual", "Gap to Pace"]
+        chart_values = [round(actual_by_today, 2), round(abs(slippage_amount), 2)]
+        chart_colors = ["#3b82f6", "#f43f5e"]
+
+    return {
+        "status": status,
+        "mode": mode,
+        "expected_label": expected_label,
+        "actual_label": actual_label,
+        "expected_by_today": round(expected_by_today, 2),
+        "actual_by_today": round(actual_by_today, 2),
+        "slippage_amount": slippage_amount,
+        "pace_pct": pace_pct,
+        "period_target": round(expected_by_today, 2),
+        "chart": {
+            "labels": chart_labels,
+            "values": chart_values,
+            "colors": chart_colors,
+        },
     }

@@ -80,3 +80,4 @@ def repair_dashboard_widget_access():
     frappe.clear_cache()
     frappe.db.commit()
     return {"ok": True}
+

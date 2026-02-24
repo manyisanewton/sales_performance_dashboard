@@ -1392,3 +1392,11 @@ def get_department_top_customers_table(department=None, limit=20):
         )
 
     return {"rows": output_rows, "total": total}
+
+
+@frappe.whitelist()
+def get_department_owner_users(department=None):
+    if not department:
+        return []
+    _, user_ids = _get_department_context(department)
+    return user_ids or []

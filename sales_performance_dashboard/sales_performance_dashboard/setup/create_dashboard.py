@@ -118,6 +118,9 @@ def ensure_company_dashboard_assets():
         ("Custom HTML Block", "custom_html_block/company_pipeline_overview/company_pipeline_overview.json"),
         ("Custom HTML Block", "custom_html_block/company_revenue_by_source/company_revenue_by_source.json"),
         ("Custom HTML Block", "custom_html_block/company_revenue_waterfall/company_revenue_waterfall.json"),
+        ("Custom HTML Block", "custom_html_block/company_gross_margin_trend/company_gross_margin_trend.json"),
+        ("Custom HTML Block", "custom_html_block/company_payment_delay_cost/company_payment_delay_cost.json"),
+        ("Custom HTML Block", "custom_html_block/company_target_slippage/company_target_slippage.json"),
         ("Custom HTML Block", "custom_html_block/company_weighted_pipeline_coverage/company_weighted_pipeline_coverage.json"),
         ("Custom HTML Block", "custom_html_block/company_deal_conversion_rate/company_deal_conversion_rate.json"),
     ]
