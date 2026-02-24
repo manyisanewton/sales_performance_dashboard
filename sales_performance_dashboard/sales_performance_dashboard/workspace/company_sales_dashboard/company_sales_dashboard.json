@@ -1,7 +1,7 @@
 {
  "charts": [],
  "content": "[{\"id\":\"csd-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h2\\\">Company Sales Dashboard</span>\",\"col\":12}},{\"id\":\"csd-sub\",\"type\":\"paragraph\",\"data\":{\"text\":\"Company-wide sales performance across all departments with one global filter bar.\",\"col\":12}},{\"id\":\"csd-global-filters\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Company Dashboard Filters\",\"col\":12}},{\"id\":\"csd-pipeline-overview\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Company Pipeline Overview\",\"col\":12}},{\"id\":\"csd-revenue-waterfall\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Company Revenue Waterfall\",\"col\":12}},{\"id\":\"csd-revenue-by-source\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Company Revenue by Source\",\"col\":6}},{\"id\":\"csd-weighted-coverage\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Company Weighted Pipeline Coverage\",\"col\":6}},{\"id\":\"csd-deal-conversion-rate\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Company Deal Conversion Rate\",\"col\":12}}]",
- "creation": "2026-02-15 10:47:11.828642",
+ "creation": "2026-02-23 15:55:43.567786",
  "custom_blocks": [
   {
    "custom_block_name": "Company Dashboard Filters",
@@ -38,7 +38,7 @@
  "is_hidden": 0,
  "label": "Company Sales Dashboard",
  "links": [],
- "modified": "2026-02-16 08:04:21.389105",
+ "modified": "2026-02-24 08:29:21.919575",
  "modified_by": "Administrator",
  "module": "Sales Performance Dashboard",
  "name": "Company Sales Dashboard",
@@ -48,7 +48,20 @@
  "public": 1,
  "quick_lists": [],
  "restrict_to_domain": "",
- "roles": [],
+ "roles": [
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
  "sequence_id": 52.0,
  "shortcuts": [
   {

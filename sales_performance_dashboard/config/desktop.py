@@ -12,6 +12,7 @@ def get_data():
             "onboard_present": 1,
             "items": [
                 {"type": "doctype", "name": "Sales Targets"},
+                {"type": "doctype", "name": "Sales Dashboard Access Settings"},
             ],
         }
     ]

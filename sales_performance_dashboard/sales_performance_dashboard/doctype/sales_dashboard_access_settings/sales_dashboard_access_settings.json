@@ -1,0 +1,187 @@
+{
+  "doctype": "DocType",
+  "name": "Sales Dashboard Access Settings",
+  "module": "Sales Performance Dashboard",
+  "custom": 0,
+  "istable": 0,
+  "issingle": 1,
+  "editable_grid": 0,
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "field_order": [
+    "dashboard_access_section",
+    "help_html",
+    "psd_section",
+    "psd_sales_user",
+    "psd_sales_manager",
+    "psd_system_manager",
+    "psd_administrator",
+    "dsd_section",
+    "dsd_sales_user",
+    "dsd_sales_manager",
+    "dsd_system_manager",
+    "dsd_administrator",
+    "csd_section",
+    "csd_sales_user",
+    "csd_sales_manager",
+    "csd_system_manager",
+    "csd_administrator",
+    "targets_access_section",
+    "sales_user_targets_mode",
+    "sales_manager_targets_mode"
+  ],
+  "fields": [
+    {
+      "fieldname": "dashboard_access_section",
+      "fieldtype": "Section Break",
+      "label": "Dashboard Access"
+    },
+    {
+      "fieldname": "help_html",
+      "fieldtype": "HTML"
+    },
+    {
+      "fieldname": "psd_section",
+      "fieldtype": "Section Break",
+      "label": "Personal Sales Dashboard"
+    },
+    {
+      "fieldname": "psd_sales_user",
+      "fieldtype": "Check",
+      "label": "Sales User",
+      "default": "1"
+    },
+    {
+      "fieldname": "psd_sales_manager",
+      "fieldtype": "Check",
+      "label": "Sales Manager",
+      "default": "1"
+    },
+    {
+      "fieldname": "psd_system_manager",
+      "fieldtype": "Check",
+      "label": "System Manager",
+      "default": "1"
+    },
+    {
+      "fieldname": "psd_administrator",
+      "fieldtype": "Check",
+      "label": "Administrator",
+      "default": "1"
+    },
+    {
+      "fieldname": "dsd_section",
+      "fieldtype": "Section Break",
+      "label": "Department Sales Dashboard"
+    },
+    {
+      "fieldname": "dsd_sales_user",
+      "fieldtype": "Check",
+      "label": "Sales User",
+      "default": "1"
+    },
+    {
+      "fieldname": "dsd_sales_manager",
+      "fieldtype": "Check",
+      "label": "Sales Manager",
+      "default": "1"
+    },
+    {
+      "fieldname": "dsd_system_manager",
+      "fieldtype": "Check",
+      "label": "System Manager",
+      "default": "1"
+    },
+    {
+      "fieldname": "dsd_administrator",
+      "fieldtype": "Check",
+      "label": "Administrator",
+      "default": "1"
+    },
+    {
+      "fieldname": "csd_section",
+      "fieldtype": "Section Break",
+      "label": "Company Sales Dashboard"
+    },
+    {
+      "fieldname": "csd_sales_user",
+      "fieldtype": "Check",
+      "label": "Sales User",
+      "default": "0"
+    },
+    {
+      "fieldname": "csd_sales_manager",
+      "fieldtype": "Check",
+      "label": "Sales Manager",
+      "default": "1"
+    },
+    {
+      "fieldname": "csd_system_manager",
+      "fieldtype": "Check",
+      "label": "System Manager",
+      "default": "1"
+    },
+    {
+      "fieldname": "csd_administrator",
+      "fieldtype": "Check",
+      "label": "Administrator",
+      "default": "1"
+    },
+    {
+      "fieldname": "targets_access_section",
+      "fieldtype": "Section Break",
+      "label": "Sales Targets Access"
+    },
+    {
+      "fieldname": "sales_user_targets_mode",
+      "fieldtype": "Select",
+      "label": "Sales User Targets Mode",
+      "options": "None\nScoped\nAll",
+      "default": "Scoped",
+      "description": "Scoped = own, own employee target, and own department target."
+    },
+    {
+      "fieldname": "sales_manager_targets_mode",
+      "fieldtype": "Select",
+      "label": "Sales Manager Targets Mode",
+      "options": "None\nScoped\nAll",
+      "default": "All"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "print": 1,
+      "email": 1,
+      "export": 1,
+      "report": 1,
+      "share": 1
+    },
+    {
+      "role": "Administrator",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "print": 1,
+      "email": 1,
+      "export": 1,
+      "report": 1,
+      "share": 1
+    },
+    {
+      "role": "Sales Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "print": 1,
+      "email": 1,
+      "export": 1,
+      "report": 1
+    }
+  ]
+}

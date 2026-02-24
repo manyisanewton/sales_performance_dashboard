@@ -6,6 +6,20 @@
  "module": "Sales Performance Dashboard",
  "icon": "dashboard",
  "public": 1,
+ "roles": [
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
  "is_hidden": 0,
  "sequence_id": 50.0,
  "shortcuts": [

@@ -116,15 +116,7 @@ fixtures = ["Module Def"]
 
 # Permissions
 # -----------
-# Permissions evaluated in scripted ways
-
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+# Sales Targets is intentionally open to all eligible desk users.
 
 # DocType Class
 # ---------------

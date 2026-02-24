@@ -11,6 +11,7 @@ import json
 import os
 
 import frappe
+from sales_performance_dashboard.api.access_settings import apply_workspace_roles_from_settings
 from frappe import _
 
 
@@ -273,6 +274,7 @@ def sync_personal_workspace():
     doc.flags.ignore_links = True
     doc.flags.ignore_validate = True
     doc.insert(ignore_permissions=True)
+    apply_workspace_roles_from_settings()
     frappe.db.commit()
     print(f"✅ Workspace '{name}' synced from JSON.")
 
@@ -311,6 +313,7 @@ def sync_department_workspace():
     doc.flags.ignore_links = True
     doc.flags.ignore_validate = True
     doc.insert(ignore_permissions=True)
+    apply_workspace_roles_from_settings()
     frappe.db.commit()
     print(f"✅ Workspace '{name}' synced from JSON.")
 
@@ -349,6 +352,7 @@ def sync_company_workspace():
     doc.flags.ignore_links = True
     doc.flags.ignore_validate = True
     doc.insert(ignore_permissions=True)
+    apply_workspace_roles_from_settings()
     frappe.db.commit()
     print(f"✅ Workspace '{name}' synced from JSON.")
 

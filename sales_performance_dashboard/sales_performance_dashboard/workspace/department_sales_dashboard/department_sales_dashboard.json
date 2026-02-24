@@ -1,7 +1,7 @@
 {
  "charts": [],
  "content": "[{\"id\":\"dsd-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h2\\\">Department Sales Dashboard</span>\",\"col\":12}},{\"id\":\"dsd-sub\",\"type\":\"paragraph\",\"data\":{\"text\":\"Department-level sales trend across all people in the selected department.\",\"col\":12}},{\"id\":\"dsd-global-filters\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Dashboard Filters\",\"col\":12}},{\"id\":\"dsd-kpi-revenue\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department KPI Revenue Customers\",\"col\":12}},{\"id\":\"dsd-target-slippage\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Target Slippage\",\"col\":12}},{\"id\":\"dsd-kpi-customers\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department KPI Customers\",\"col\":12}},{\"id\":\"dsd-trend\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Sales Order Trend Block\",\"col\":12}},{\"id\":\"dsd-kpi-deals\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department KPI Deals Pipeline\",\"col\":12}},{\"id\":\"dsd-pipeline-coverage\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Weighted Pipeline Coverage\",\"col\":12}},{\"id\":\"dsd-forecast\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Forecasted Revenue Block\",\"col\":12}},{\"id\":\"dsd-gross-margin\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Gross Margin Trend\",\"col\":12}},{\"id\":\"dsd-discount-leakage\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Discount Leakage\",\"col\":12}},{\"id\":\"dsd-payment-delay-cost\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Payment Delay Cost\",\"col\":12}},{\"id\":\"dsd-funnel\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Sales Funnel\",\"col\":12}},{\"id\":\"dsd-top-customers\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Department Top Customers Table\",\"col\":12}},{\"id\":\"dsd-targets-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Targets</b></span>\",\"col\":12}},{\"id\":\"dsd-target-link\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Targets\",\"col\":3}}]",
- "creation": "2026-02-15 11:09:09.227444",
+ "creation": "2026-02-23 15:55:40.352610",
  "custom_blocks": [
   {
    "custom_block_name": "Department Dashboard Filters",
@@ -66,7 +66,7 @@
  "is_hidden": 0,
  "label": "Department Sales Dashboard",
  "links": [],
- "modified": "2026-02-15 11:09:09.227444",
+ "modified": "2026-02-24 08:29:21.831012",
  "modified_by": "Administrator",
  "module": "Sales Performance Dashboard",
  "name": "Department Sales Dashboard",
@@ -76,7 +76,20 @@
  "public": 1,
  "quick_lists": [],
  "restrict_to_domain": "",
- "roles": [],
+ "roles": [
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
  "sequence_id": 51.0,
  "shortcuts": [
   {
