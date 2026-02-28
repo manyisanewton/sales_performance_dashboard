@@ -3,6 +3,7 @@
 import frappe
 from frappe.utils import add_days, add_months, cint, flt, get_first_day, get_last_day, getdate, nowdate
 from collections import defaultdict
+from sales_performance_dashboard.api.access_settings import get_annual_financing_rate
 
 
 DEMO_PATTERN = "SPD-DEMO-%"
@@ -190,13 +191,135 @@ def get_company_pipeline_overview(
         lead_source=lead_source,
     )
 
+    funnel_labels = ["Lead", "Opportunity", "Quotation", "Customer", "Sales Order", "Delivery Note", "Sales Invoice"]
+    zero_funnel = {"labels": funnel_labels, "values": [0] * len(funnel_labels)}
+    status_labels = ["Open", "Won", "Lost", "Other"]
+
     if empty_scope:
         return {
             "from_date": str(start_date),
             "to_date": str(end_date),
-            "funnel": {"labels": ["Open", "Quotation", "Negotiation", "Won", "Lost"], "values": [0, 0, 0, 0, 0]},
-            "deal_status": {"labels": ["Open", "Won", "Lost", "Other"], "values": [0, 0, 0, 0]},
+            "funnel": zero_funnel,
+            "deal_status": {"labels": status_labels, "values": [0, 0, 0, 0]},
         }
+
+    owner_users = _owner_users_for_department(department)
+    if department and not owner_users:
+        return {
+            "from_date": str(start_date),
+            "to_date": str(end_date),
+            "funnel": zero_funnel,
+            "deal_status": {"labels": status_labels, "values": [0, 0, 0, 0]},
+        }
+
+    users_tuple = tuple(owner_users) if owner_users else ()
+    source_field = _source_field()
+
+    def _field_exists(doctype, fieldname):
+        return frappe.get_meta(doctype).has_field(fieldname)
+
+    # Lead stage
+    lead_filters = [
+        ["name", "not like", DEMO_PATTERN],
+        ["lead_name", "not like", DEMO_PATTERN],
+        ["creation", "between", [start_date, end_date]],
+    ]
+    if users_tuple:
+        lead_filters.append(["owner", "in", users_tuple])
+    if lead_source and _field_exists("Lead", "source"):
+        lead_filters.append(["source", "=", lead_source])
+
+    lead_names = frappe.get_all("Lead", filters=lead_filters, pluck="name", limit=50000)
+    lead_count = len(lead_names)
+
+    # Opportunity stage (from leads in current scope)
+    opportunity_count = 0
+    if lead_names:
+        opp_filters = [
+            ["name", "not like", DEMO_PATTERN],
+            ["party_name", "not like", DEMO_PATTERN],
+            ["creation", "between", [start_date, end_date]],
+            ["opportunity_from", "=", "Lead"],
+            ["party_name", "in", tuple(lead_names)],
+        ]
+        if users_tuple:
+            opp_filters.append(["owner", "in", users_tuple])
+        if company and _field_exists("Opportunity", "company"):
+            opp_filters.append(["company", "=", company])
+        if lead_source and source_field and _field_exists("Opportunity", source_field):
+            opp_filters.append([source_field, "=", lead_source])
+
+        opportunity_count = frappe.db.count("Opportunity", filters=opp_filters)
+
+    # Customer stage (converted from scoped leads)
+    customer_names = []
+    if lead_names:
+        customer_filters = [
+            ["name", "not like", DEMO_PATTERN],
+            ["customer_name", "not like", DEMO_PATTERN],
+            ["creation", "between", [start_date, end_date]],
+            ["lead_name", "in", tuple(lead_names)],
+        ]
+        if users_tuple:
+            customer_filters.append(["owner", "in", users_tuple])
+        customer_names = frappe.get_all("Customer", filters=customer_filters, pluck="name", limit=50000)
+    customer_count = len(customer_names)
+
+    # Quotation / Sales Order / Delivery Note / Sales Invoice stages
+    quotation_count = 0
+    sales_order_count = 0
+    delivery_note_count = 0
+    sales_invoice_count = 0
+    if customer_names:
+        customer_tuple = tuple(customer_names)
+
+        quotation_filters = [
+            ["docstatus", "=", 1],
+            ["party_name", "in", customer_tuple],
+            ["party_name", "not like", DEMO_PATTERN],
+            ["transaction_date", "between", [start_date, end_date]],
+        ]
+        if users_tuple:
+            quotation_filters.append(["owner", "in", users_tuple])
+        if company and _field_exists("Quotation", "company"):
+            quotation_filters.append(["company", "=", company])
+        quotation_count = frappe.db.count("Quotation", filters=quotation_filters)
+
+        so_filters = [
+            ["docstatus", "=", 1],
+            ["customer", "in", customer_tuple],
+            ["customer", "not like", DEMO_PATTERN],
+            ["transaction_date", "between", [start_date, end_date]],
+        ]
+        if users_tuple:
+            so_filters.append(["owner", "in", users_tuple])
+        if company and _field_exists("Sales Order", "company"):
+            so_filters.append(["company", "=", company])
+        sales_order_count = frappe.db.count("Sales Order", filters=so_filters)
+
+        dn_filters = [
+            ["docstatus", "=", 1],
+            ["customer", "in", customer_tuple],
+            ["customer", "not like", DEMO_PATTERN],
+            ["posting_date", "between", [start_date, end_date]],
+        ]
+        if users_tuple:
+            dn_filters.append(["owner", "in", users_tuple])
+        if company and _field_exists("Delivery Note", "company"):
+            dn_filters.append(["company", "=", company])
+        delivery_note_count = frappe.db.count("Delivery Note", filters=dn_filters)
+
+        si_filters = [
+            ["docstatus", "=", 1],
+            ["customer", "in", customer_tuple],
+            ["customer", "not like", DEMO_PATTERN],
+            ["posting_date", "between", [start_date, end_date]],
+        ]
+        if users_tuple:
+            si_filters.append(["owner", "in", users_tuple])
+        if company and _field_exists("Sales Invoice", "company"):
+            si_filters.append(["company", "=", company])
+        sales_invoice_count = frappe.db.count("Sales Invoice", filters=si_filters)
 
     rows = frappe.get_all(
         "Opportunity",
@@ -205,17 +328,10 @@ def get_company_pipeline_overview(
         limit=20000,
     )
 
-    funnel_labels = ["Open", "Quotation", "Negotiation", "Won", "Lost"]
-    funnel_counts = {k: 0 for k in funnel_labels}
-    status_labels = ["Open", "Won", "Lost", "Other"]
     status_counts = {k: 0 for k in status_labels}
 
     for row in rows:
         status = row.get("status")
-        funnel_key = _funnel_bucket(status)
-        if funnel_key in funnel_counts:
-            funnel_counts[funnel_key] += 1
-
         status_key = _status_bucket(status)
         if status_key in status_counts:
             status_counts[status_key] += 1
@@ -225,7 +341,15 @@ def get_company_pipeline_overview(
         "to_date": str(end_date),
         "funnel": {
             "labels": funnel_labels,
-            "values": [funnel_counts[k] for k in funnel_labels],
+            "values": [
+                lead_count,
+                opportunity_count,
+                quotation_count,
+                customer_count,
+                sales_order_count,
+                delivery_note_count,
+                sales_invoice_count,
+            ],
         },
         "deal_status": {
             "labels": status_labels,
@@ -706,12 +830,17 @@ def get_company_payment_delay_cost(
     department=None,
     reference_date=None,
     view_mode=None,
-    annual_financing_rate=18,
+    annual_financing_rate=None,
     top_limit=6,
 ):
     del view_mode  # Not required for overdue aging as-of snapshot.
     top_limit = max(3, min(cint(top_limit) if top_limit else 6, 12))
-    annual_financing_rate = flt(annual_financing_rate or 18)
+    configured_rate = get_annual_financing_rate()
+    annual_financing_rate = flt(
+        annual_financing_rate if annual_financing_rate not in (None, "") else configured_rate
+    )
+    if annual_financing_rate < 0:
+        annual_financing_rate = 0
     as_of = getdate(reference_date or nowdate())
 
     where_sql, params = _invoice_conditions(
@@ -915,4 +1044,168 @@ def get_company_target_slippage(
             "values": chart_values,
             "colors": chart_colors,
         },
+    }
+
+
+@frappe.whitelist()
+def get_company_project_status_finance(
+    company=None,
+    department=None,
+    view_mode="Monthly",
+    reference_date=None,
+):
+    """Company project status + project-linked finance summary for dashboard."""
+    from_date, to_date = _view_range(view_mode, reference_date)
+    as_of = getdate(reference_date or nowdate())
+
+    project_meta = frappe.get_meta("Project")
+    has_company = project_meta.has_field("company")
+
+    project_where = ["p.docstatus < 2"]
+    project_params = {}
+
+    if has_company and company:
+        project_where.append("p.company = %(company)s")
+        project_params["company"] = company
+
+    if department:
+        owner_users = _owner_users_for_department(department)
+        if not owner_users:
+            return {
+                "from_date": str(from_date),
+                "to_date": str(to_date),
+                "as_of": str(as_of),
+                "counts": {"total": 0, "ongoing": 0, "completed": 0},
+                "money": {"total_revenue": 0.0, "outstanding": 0.0},
+                "aging": {"0-30": 0.0, "31-60": 0.0, "61-90": 0.0, "90+": 0.0},
+                "invoice_names_period": [],
+                "invoice_names_outstanding": [],
+                "bucket_invoice_names": {"0-30": [], "31-60": [], "61-90": [], "90+": []},
+            }
+        project_where.append("p.owner IN %(owner_users)s")
+        project_params["owner_users"] = tuple(owner_users)
+
+    projects = frappe.db.sql(
+        f"""
+        SELECT p.name, p.status
+        FROM `tabProject` p
+        WHERE {' AND '.join(project_where)}
+        """,
+        project_params,
+        as_dict=True,
+    )
+    project_names = [p.name for p in projects]
+
+    total_projects = len(project_names)
+    ongoing_statuses = {"Open", "In Progress", "Working"}
+    completed_statuses = {"Completed"}
+    ongoing = sum(1 for p in projects if (p.status or "") in ongoing_statuses)
+    completed = sum(1 for p in projects if (p.status or "") in completed_statuses)
+
+    if not project_names:
+        return {
+            "from_date": str(from_date),
+            "to_date": str(to_date),
+            "as_of": str(as_of),
+            "counts": {"total": total_projects, "ongoing": ongoing, "completed": completed},
+            "money": {"total_revenue": 0.0, "outstanding": 0.0},
+            "aging": {"0-30": 0.0, "31-60": 0.0, "61-90": 0.0, "90+": 0.0},
+            "invoice_names_period": [],
+            "invoice_names_outstanding": [],
+            "bucket_invoice_names": {"0-30": [], "31-60": [], "61-90": [], "90+": []},
+        }
+
+    period_invoice_where = [
+        "si.docstatus = 1",
+        "si.customer NOT LIKE %(demo)s",
+        "si.posting_date BETWEEN %(from_date)s AND %(to_date)s",
+        "(si.project IN %(projects)s OR EXISTS (SELECT 1 FROM `tabSales Invoice Item` sii WHERE sii.parent = si.name AND sii.project IN %(projects)s))",
+    ]
+    period_invoice_params = {
+        "demo": DEMO_PATTERN,
+        "from_date": from_date,
+        "to_date": to_date,
+        "projects": tuple(project_names),
+    }
+    if company:
+        period_invoice_where.append("si.company = %(company)s")
+        period_invoice_params["company"] = company
+    if department:
+        owner_users = _owner_users_for_department(department)
+        period_invoice_where.append("si.owner IN %(owner_users)s")
+        period_invoice_params["owner_users"] = tuple(owner_users)
+
+    period_invoice_rows = frappe.db.sql(
+        f"""
+        SELECT si.name, si.grand_total
+        FROM `tabSales Invoice` si
+        WHERE {' AND '.join(period_invoice_where)}
+        """,
+        period_invoice_params,
+        as_dict=True,
+    )
+    total_revenue = round(sum(flt(r.grand_total) for r in period_invoice_rows), 2)
+    invoice_names_period = [r.name for r in period_invoice_rows]
+
+    outstanding_where = [
+        "si.docstatus = 1",
+        "si.customer NOT LIKE %(demo)s",
+        "si.outstanding_amount > 0",
+        "(si.project IN %(projects)s OR EXISTS (SELECT 1 FROM `tabSales Invoice Item` sii WHERE sii.parent = si.name AND sii.project IN %(projects)s))",
+    ]
+    outstanding_params = {"demo": DEMO_PATTERN, "projects": tuple(project_names)}
+    if company:
+        outstanding_where.append("si.company = %(company)s")
+        outstanding_params["company"] = company
+    if department:
+        owner_users = _owner_users_for_department(department)
+        outstanding_where.append("si.owner IN %(owner_users)s")
+        outstanding_params["owner_users"] = tuple(owner_users)
+
+    outstanding_rows = frappe.db.sql(
+        f"""
+        SELECT si.name, si.outstanding_amount, si.due_date
+        FROM `tabSales Invoice` si
+        WHERE {' AND '.join(outstanding_where)}
+        """,
+        outstanding_params,
+        as_dict=True,
+    )
+    outstanding_total = round(sum(flt(r.outstanding_amount) for r in outstanding_rows), 2)
+    invoice_names_outstanding = [r.name for r in outstanding_rows]
+
+    bucket_amounts = {"0-30": 0.0, "31-60": 0.0, "61-90": 0.0, "90+": 0.0}
+    bucket_invoice_names = {"0-30": [], "31-60": [], "61-90": [], "90+": []}
+
+    for row in outstanding_rows:
+        due_date = getdate(row.due_date) if row.due_date else None
+        if not due_date:
+            continue
+        days_overdue = max(date_diff(as_of, due_date), 0)
+        if days_overdue <= 0:
+            continue
+        amount = flt(row.outstanding_amount)
+        if days_overdue <= 30:
+            key = "0-30"
+        elif days_overdue <= 60:
+            key = "31-60"
+        elif days_overdue <= 90:
+            key = "61-90"
+        else:
+            key = "90+"
+        bucket_amounts[key] += amount
+        bucket_invoice_names[key].append(row.name)
+
+    bucket_amounts = {k: round(v, 2) for k, v in bucket_amounts.items()}
+
+    return {
+        "from_date": str(from_date),
+        "to_date": str(to_date),
+        "as_of": str(as_of),
+        "counts": {"total": total_projects, "ongoing": ongoing, "completed": completed},
+        "money": {"total_revenue": total_revenue, "outstanding": outstanding_total},
+        "aging": bucket_amounts,
+        "invoice_names_period": invoice_names_period,
+        "invoice_names_outstanding": invoice_names_outstanding,
+        "bucket_invoice_names": bucket_invoice_names,
     }

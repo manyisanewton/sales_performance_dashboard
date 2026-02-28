@@ -15,6 +15,7 @@ DEFAULTS = {
     "csd_administrator": 1,
     "sales_user_targets_mode": "Scoped",
     "sales_manager_targets_mode": "All",
+    "annual_financing_rate": 18,
 }
 
 ROLE_FIELDS = {
@@ -99,6 +100,18 @@ def get_targets_mode_for_user(user: str) -> str:
     if "Scoped" in modes:
         return "Scoped"
     return "None"
+
+
+def get_annual_financing_rate() -> float:
+    settings = get_access_settings()
+    value = settings.get("annual_financing_rate", 18)
+    try:
+        rate = float(value)
+    except (TypeError, ValueError):
+        rate = 18.0
+    if rate < 0:
+        rate = 0.0
+    return rate
 
 
 @frappe.whitelist()

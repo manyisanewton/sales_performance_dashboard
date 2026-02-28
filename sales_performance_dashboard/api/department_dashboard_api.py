@@ -4,8 +4,9 @@ from collections import defaultdict
 from datetime import timedelta
 
 import frappe
-from frappe.utils import add_months, cint, flt, get_first_day, get_last_day, getdate, nowdate
+from frappe.utils import add_months, cint, date_diff, flt, get_first_day, get_last_day, getdate, nowdate
 
+from sales_performance_dashboard.api.access_settings import get_annual_financing_rate
 from sales_performance_dashboard.sales_performance_dashboard.dashboards.personal_dashboard import (
     PersonalSalesDashboard,
 )
@@ -206,6 +207,33 @@ def _get_department_yearly_target(department, as_of_date):
         """,
         {"department": department, "as_of_date": as_of_date},
     )
+
+
+@frappe.whitelist()
+def get_department_sales_target_route(department=None):
+    if not department:
+        return {
+            "has_target": False,
+            "department": None,
+            "target_name": None,
+        }
+
+    target_name = frappe.db.get_value(
+        "Sales Targets",
+        {
+            "target_level": "Department",
+            "department": department,
+            "docstatus": ["<", 2],
+        },
+        "name",
+        order_by="start_date desc, modified desc",
+    )
+
+    return {
+        "has_target": bool(target_name),
+        "department": department,
+        "target_name": target_name,
+    }
 
 
 @frappe.whitelist()
@@ -1166,11 +1194,16 @@ def get_department_kpis(department=None, risk_window_days=14, reference_date=Non
 def get_department_payment_delay_cost(
     department=None,
     reference_date=None,
-    annual_financing_rate=18,
+    annual_financing_rate=None,
     top_limit=6,
 ):
     top_limit = max(3, min(cint(top_limit) if top_limit else 6, 12))
-    annual_financing_rate = flt(annual_financing_rate or 18)
+    configured_rate = get_annual_financing_rate()
+    annual_financing_rate = flt(
+        annual_financing_rate if annual_financing_rate not in (None, "") else configured_rate
+    )
+    if annual_financing_rate < 0:
+        annual_financing_rate = 0
     as_of = getdate(reference_date or nowdate())
 
     if not department:
@@ -1400,3 +1433,354 @@ def get_department_owner_users(department=None):
         return []
     _, user_ids = _get_department_context(department)
     return user_ids or []
+
+
+@frappe.whitelist()
+def get_department_project_pipeline(department=None):
+    """Project status split for selected department owners."""
+    statuses = ["Open", "In Progress", "Completed", "Cancelled"]
+    counts = {status: 0 for status in statuses}
+
+    if not department:
+        return {
+            "labels": statuses,
+            "values": [0, 0, 0, 0],
+            "total": 0,
+            "colors": ["#3b82f6", "#f59e0b", "#16a34a", "#ef4444"],
+            "scope": {"department": None},
+            "owners": [],
+        }
+
+    _, user_ids = _get_department_context(department)
+    users = tuple([u for u in user_ids if u])
+    if users:
+        rows = frappe.db.sql(
+            """
+            SELECT status, COUNT(*) AS total
+            FROM `tabProject`
+            WHERE status IN %(statuses)s
+              AND owner IN %(users)s
+            GROUP BY status
+            """,
+            {"statuses": tuple(statuses), "users": users},
+            as_dict=True,
+        )
+        for row in rows:
+            key = row.get("status")
+            if key in counts:
+                counts[key] = cint(row.get("total"))
+
+    labels = statuses
+    values = [counts[s] for s in labels]
+    return {
+        "labels": labels,
+        "values": values,
+        "total": sum(values),
+        "colors": ["#3b82f6", "#f59e0b", "#16a34a", "#ef4444"],
+        "scope": {"department": department},
+        "owners": list(users) if users else [],
+    }
+
+
+@frappe.whitelist()
+def get_department_project_status_finance(
+    department=None,
+    view_mode="Monthly",
+    reference_date=None,
+):
+    """Department projects status + finance + aging buckets for compact dashboard cards."""
+    from_date, to_date = _get_period_range(view_mode, reference_date)
+    as_of = getdate(reference_date or nowdate())
+    demo_pattern = PersonalSalesDashboard().demo_pattern
+
+    if not department:
+        return {
+            "scope": {"department": None},
+            "from_date": str(from_date),
+            "to_date": str(to_date),
+            "as_of": str(as_of),
+            "counts": {"total": 0, "ongoing": 0, "completed": 0},
+            "money": {"total_revenue": 0.0, "outstanding": 0.0},
+            "aging": {"0-30": 0.0, "31-60": 0.0, "61-90": 0.0, "90+": 0.0},
+            "invoice_names_period": [],
+            "invoice_names_outstanding": [],
+            "bucket_invoice_names": {"0-30": [], "31-60": [], "61-90": [], "90+": []},
+            "owners": [],
+        }
+
+    _, user_ids = _get_department_context(department)
+    users = tuple([u for u in user_ids if u])
+    if not users:
+        return {
+            "scope": {"department": department},
+            "from_date": str(from_date),
+            "to_date": str(to_date),
+            "as_of": str(as_of),
+            "counts": {"total": 0, "ongoing": 0, "completed": 0},
+            "money": {"total_revenue": 0.0, "outstanding": 0.0},
+            "aging": {"0-30": 0.0, "31-60": 0.0, "61-90": 0.0, "90+": 0.0},
+            "invoice_names_period": [],
+            "invoice_names_outstanding": [],
+            "bucket_invoice_names": {"0-30": [], "31-60": [], "61-90": [], "90+": []},
+            "owners": [],
+        }
+
+    project_rows = frappe.db.sql(
+        """
+        SELECT name, status
+        FROM `tabProject`
+        WHERE owner IN %(users)s
+        """,
+        {"users": users},
+        as_dict=True,
+    )
+    project_names = [p.name for p in project_rows]
+
+    total_projects = len(project_names)
+    ongoing_statuses = {"Open", "In Progress", "Working"}
+    completed_statuses = {"Completed"}
+    ongoing = sum(1 for p in project_rows if (p.status or "") in ongoing_statuses)
+    completed = sum(1 for p in project_rows if (p.status or "") in completed_statuses)
+
+    if not project_names:
+        return {
+            "scope": {"department": department},
+            "from_date": str(from_date),
+            "to_date": str(to_date),
+            "as_of": str(as_of),
+            "counts": {"total": total_projects, "ongoing": ongoing, "completed": completed},
+            "money": {"total_revenue": 0.0, "outstanding": 0.0},
+            "aging": {"0-30": 0.0, "31-60": 0.0, "61-90": 0.0, "90+": 0.0},
+            "invoice_names_period": [],
+            "invoice_names_outstanding": [],
+            "bucket_invoice_names": {"0-30": [], "31-60": [], "61-90": [], "90+": []},
+            "owners": list(users),
+        }
+
+    period_invoice_rows = frappe.db.sql(
+        """
+        SELECT
+            si.name,
+            si.grand_total
+        FROM `tabSales Invoice` si
+        WHERE si.docstatus = 1
+          AND si.customer NOT LIKE %(demo)s
+          AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+          AND (
+            si.project IN %(projects)s
+            OR EXISTS (
+              SELECT 1
+              FROM `tabSales Invoice Item` sii
+              WHERE sii.parent = si.name
+                AND sii.project IN %(projects)s
+            )
+          )
+        """,
+        {
+            "demo": demo_pattern,
+            "from_date": from_date,
+            "to_date": to_date,
+            "projects": tuple(project_names),
+        },
+        as_dict=True,
+    )
+    total_revenue = round(sum(flt(r.grand_total) for r in period_invoice_rows), 2)
+    invoice_names_period = [r.name for r in period_invoice_rows]
+
+    outstanding_rows = frappe.db.sql(
+        """
+        SELECT
+            si.name,
+            si.outstanding_amount,
+            si.due_date
+        FROM `tabSales Invoice` si
+        WHERE si.docstatus = 1
+          AND si.customer NOT LIKE %(demo)s
+          AND si.outstanding_amount > 0
+          AND (
+            si.project IN %(projects)s
+            OR EXISTS (
+              SELECT 1
+              FROM `tabSales Invoice Item` sii
+              WHERE sii.parent = si.name
+                AND sii.project IN %(projects)s
+            )
+          )
+        """,
+        {
+            "demo": demo_pattern,
+            "projects": tuple(project_names),
+        },
+        as_dict=True,
+    )
+
+    outstanding_total = round(sum(flt(r.outstanding_amount) for r in outstanding_rows), 2)
+    invoice_names_outstanding = [r.name for r in outstanding_rows]
+    bucket_amounts = {"0-30": 0.0, "31-60": 0.0, "61-90": 0.0, "90+": 0.0}
+    bucket_invoice_names = {"0-30": [], "31-60": [], "61-90": [], "90+": []}
+
+    for row in outstanding_rows:
+        due_date = getdate(row.due_date) if row.due_date else None
+        if not due_date:
+            continue
+        days_overdue = max(date_diff(as_of, due_date), 0)
+        if days_overdue <= 0:
+            continue
+        amount = flt(row.outstanding_amount)
+        if days_overdue <= 30:
+            key = "0-30"
+        elif days_overdue <= 60:
+            key = "31-60"
+        elif days_overdue <= 90:
+            key = "61-90"
+        else:
+            key = "90+"
+        bucket_amounts[key] += amount
+        bucket_invoice_names[key].append(row.name)
+
+    bucket_amounts = {k: round(v, 2) for k, v in bucket_amounts.items()}
+
+    return {
+        "scope": {"department": department},
+        "from_date": str(from_date),
+        "to_date": str(to_date),
+        "as_of": str(as_of),
+        "counts": {"total": total_projects, "ongoing": ongoing, "completed": completed},
+        "money": {"total_revenue": total_revenue, "outstanding": outstanding_total},
+        "aging": bucket_amounts,
+        "invoice_names_period": invoice_names_period,
+        "invoice_names_outstanding": invoice_names_outstanding,
+        "bucket_invoice_names": bucket_invoice_names,
+        "owners": list(users),
+    }
+
+
+def _owner_initials(display_name):
+    text = (display_name or "").strip()
+    if not text:
+        return "--"
+
+    if "@" in text:
+        text = text.split("@", 1)[0].replace(".", " ").replace("_", " ")
+
+    parts = [p for p in text.replace("-", " ").split() if p]
+    if not parts:
+        return (display_name or "--")[:2].upper()
+    if len(parts) == 1:
+        return parts[0][:2].upper()
+    return f"{parts[0][0]}{parts[1][0]}".upper()
+
+
+@frappe.whitelist()
+def get_department_project_delivery_health(department=None, limit=5):
+    """Execution view for department projects with owner initials in each row."""
+    limit = max(1, min(cint(limit or 5), 100))
+    today = getdate(nowdate())
+
+    if not department:
+        return {"summary": {"projects": 0, "on_track": 0, "at_risk": 0, "overdue": 0}, "rows": []}
+
+    _, user_ids = _get_department_context(department)
+    users = tuple([u for u in user_ids if u])
+    if not users:
+        return {"summary": {"projects": 0, "on_track": 0, "at_risk": 0, "overdue": 0}, "rows": []}
+
+    projects = frappe.db.sql(
+        """
+        SELECT
+            p.name,
+            COALESCE(NULLIF(p.project_name, ''), p.name) AS project_label,
+            p.status,
+            p.expected_end_date,
+            p.owner,
+            COALESCE(NULLIF(u.full_name, ''), p.owner) AS owner_name
+        FROM `tabProject` p
+        LEFT JOIN `tabUser` u ON u.name = p.owner
+        WHERE p.owner IN %(users)s
+          AND p.status != 'Cancelled'
+        ORDER BY p.creation DESC, p.modified DESC
+        LIMIT %(limit)s
+        """,
+        {"users": users, "limit": limit},
+        as_dict=True,
+    )
+
+    project_names = [row.name for row in projects]
+    if not project_names:
+        return {"summary": {"projects": 0, "on_track": 0, "at_risk": 0, "overdue": 0}, "rows": []}
+
+    task_stats = {
+        row.project: row
+        for row in frappe.db.sql(
+            """
+            SELECT
+                t.project,
+                COUNT(*) AS total_tasks,
+                SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) AS completed_tasks,
+                SUM(CASE WHEN t.status NOT IN ('Completed', 'Cancelled') THEN 1 ELSE 0 END) AS open_tasks,
+                SUM(
+                    CASE
+                        WHEN t.exp_end_date IS NOT NULL
+                         AND t.exp_end_date < CURDATE()
+                         AND t.status NOT IN ('Completed', 'Cancelled')
+                        THEN 1 ELSE 0
+                    END
+                ) AS overdue_tasks,
+                AVG(CASE WHEN t.progress IS NULL THEN 0 ELSE t.progress END) AS avg_progress
+            FROM `tabTask` t
+            WHERE t.project IN %(projects)s
+            GROUP BY t.project
+            """,
+            {"projects": tuple(project_names)},
+            as_dict=True,
+        )
+    }
+
+    rows = []
+    summary = {"projects": 0, "on_track": 0, "at_risk": 0, "overdue": 0}
+
+    for project in projects:
+        stats = task_stats.get(project.name) or {}
+        total_tasks = cint(stats.get("total_tasks"))
+        completed_tasks = cint(stats.get("completed_tasks"))
+        open_tasks = cint(stats.get("open_tasks"))
+        overdue_tasks = cint(stats.get("overdue_tasks"))
+        avg_progress = flt(stats.get("avg_progress"))
+
+        if total_tasks > 0:
+            completion = avg_progress if avg_progress > 0 else (completed_tasks / total_tasks) * 100.0
+        else:
+            completion = 100.0 if project.status == "Completed" else 0.0
+        completion = max(0.0, min(completion, 100.0))
+
+        health = "On Track"
+        end_date = getdate(project.expected_end_date) if project.expected_end_date else None
+        if end_date and end_date < today and completion < 100.0 and project.status != "Completed":
+            health = "Overdue"
+        elif end_date and date_diff(end_date, today) <= 7 and completion < 80.0 and project.status != "Completed":
+            health = "At Risk"
+
+        summary["projects"] += 1
+        if health == "Overdue":
+            summary["overdue"] += 1
+        elif health == "At Risk":
+            summary["at_risk"] += 1
+        else:
+            summary["on_track"] += 1
+
+        owner_name = project.owner_name or project.owner or ""
+        rows.append(
+            {
+                "project": project.name,
+                "project_label": project.project_label,
+                "planned_end_date": project.expected_end_date,
+                "completion_pct": round(completion, 1),
+                "open_tasks": open_tasks,
+                "overdue_tasks": overdue_tasks,
+                "health": health,
+                "owner_name": owner_name,
+                "owner_initials": _owner_initials(owner_name),
+            }
+        )
+
+    return {"summary": summary, "rows": rows}

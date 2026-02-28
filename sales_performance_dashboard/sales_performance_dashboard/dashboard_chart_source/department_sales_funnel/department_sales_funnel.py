@@ -14,16 +14,16 @@ def _build_funnel_data(department):
 
     if not department:
         return {
-            "labels": [_("Lead"), _("Opportunity"), _("Customer"), _("Quotation"), _("Sales Order")],
-            "datasets": [{"name": _("Funnel"), "values": [0, 0, 0, 0, 0]}],
+            "labels": [_("Lead"), _("Opportunity"), _("Quotation"), _("Customer"), _("Sales Order"), _("Delivery Note"), _("Sales Invoice")],
+            "datasets": [{"name": _("Funnel"), "values": [0, 0, 0, 0, 0, 0, 0]}],
             "type": "bar",
         }
 
     employee_ids, user_ids = _get_department_context(department)
     if not user_ids:
         return {
-            "labels": [_("Lead"), _("Opportunity"), _("Customer"), _("Quotation"), _("Sales Order")],
-            "datasets": [{"name": _("Funnel"), "values": [0, 0, 0, 0, 0]}],
+            "labels": [_("Lead"), _("Opportunity"), _("Quotation"), _("Customer"), _("Sales Order"), _("Delivery Note"), _("Sales Invoice")],
+            "datasets": [{"name": _("Funnel"), "values": [0, 0, 0, 0, 0, 0, 0]}],
             "type": "bar",
         }
 
@@ -80,19 +80,41 @@ def _build_funnel_data(department):
         ],
     )
 
+    delivery_note_count = frappe.db.count(
+        "Delivery Note",
+        filters=[
+            ["docstatus", "=", 1],
+            ["owner", "in", users_tuple],
+            ["customer", "not like", demo],
+        ],
+    )
+
+    sales_invoice_count = frappe.db.count(
+        "Sales Invoice",
+        filters=[
+            ["docstatus", "=", 1],
+            ["owner", "in", users_tuple],
+            ["customer", "not like", demo],
+        ],
+    )
+
     labels = [
         _("Lead"),
         _("Opportunity"),
-        _("Customer"),
         _("Quotation"),
+        _("Customer"),
         _("Sales Order"),
+        _("Delivery Note"),
+        _("Sales Invoice"),
     ]
     values = [
         lead_count,
         opportunity_count,
-        customer_count,
         quotation_count,
+        customer_count,
         sales_order_count,
+        delivery_note_count,
+        sales_invoice_count,
     ]
 
     return {

@@ -1,0 +1,9 @@
+{
+ "doctype": "Custom HTML Block",
+ "name": "Personal Sales Order Analysis Block",
+ "module": "Sales Performance Dashboard",
+ "private": 0,
+ "html": "<div class=\"psd-soa-card\"><div class=\"psd-soa-header\">Personal Sales Order Analysis</div><div class=\"psd-soa-sub\">Amount to bill vs billed amount</div><div class=\"psd-soa-chart\"></div></div>",
+ "script": "const method = \"sales_performance_dashboard.sales_performance_dashboard.dashboard_chart_source.personal_sales_order_analysis.personal_sales_order_analysis.get_data_for_custom\";\nconst chartWrap = root_element.querySelector('.psd-soa-chart');\nlet chart = null;\n\nfunction args() {\n\treturn {\n\t\tdepartment: localStorage.getItem('spd_personal_dashboard_department') || '',\n\t\temployee: localStorage.getItem('spd_personal_dashboard_employee') || '',\n\t};\n}\n\nfunction render(payload) {\n\tconst labels = payload.labels || ['Amount to Bill', 'Billed Amount'];\n\tconst values = payload.values || [0, 0];\n\tconst colors = payload.colors || ['#9ad0f5', '#28a745'];\n\tchartWrap.innerHTML = '';\n\tchart = new frappe.Chart(chartWrap, {\n\t\ttype: 'donut',\n\t\theight: 260,\n\t\tcolors,\n\t\tdata: {\n\t\t\tlabels,\n\t\t\tdatasets: [{ values }],\n\t\t},\n\t\ttooltipOptions: {\n\t\t\tformatTooltipY: (v) => format_currency(v || 0),\n\t\t},\n\t});\n}\n\nfunction load() {\n\tfrappe.call({ method, args: args() }).then((r) => {\n\t\trender(r.message || {});\n\t});\n}\n\nwindow.addEventListener('spd-personal-changed', load);\nload();\n",
+ "style": ".psd-soa-card{background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:14px;box-shadow:0 3px 14px rgba(15,23,42,.05)}.psd-soa-header{font-size:16px;font-weight:700;margin-bottom:2px}.psd-soa-sub{color:var(--text-muted);font-size:11px;margin-bottom:8px}.psd-soa-chart{min-height:260px}"
+}

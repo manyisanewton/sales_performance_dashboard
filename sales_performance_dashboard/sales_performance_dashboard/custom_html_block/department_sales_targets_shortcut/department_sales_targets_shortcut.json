@@ -1,0 +1,9 @@
+{
+ "doctype": "Custom HTML Block",
+ "name": "Department Sales Targets Shortcut",
+ "module": "Sales Performance Dashboard",
+ "private": 0,
+ "html": "<div class=\"dsd-target-shortcut\"><a href=\"#\" class=\"dsd-target-shortcut-link\">Sales Targets <span aria-hidden=\"true\">↗</span></a></div>",
+ "script": "const method = \"sales_performance_dashboard.api.department_dashboard_api.get_department_sales_target_route\";\nconst storageKey = 'spd_department_dashboard_department';\nconst link = root_element.querySelector('.dsd-target-shortcut-link');\n\nfunction args() {\n  return {\n    department: localStorage.getItem(storageKey) || '',\n  };\n}\n\nlink.addEventListener('click', (e) => {\n  e.preventDefault();\n  const payload = args();\n  if (!payload.department) {\n    frappe.show_alert({ message: 'Select a department first.', indicator: 'orange' });\n    return;\n  }\n\n  frappe.call({ method, args: payload }).then((r) => {\n    const data = r.message || {};\n    if (data.has_target && data.target_name) {\n      frappe.set_route('Form', 'Sales Targets', data.target_name);\n      return;\n    }\n\n    frappe.new_doc('Sales Targets', {\n      target_level: 'Department',\n      department: data.department || payload.department,\n    });\n  });\n});\n",
+ "style": ".dsd-target-shortcut{padding:6px 2px 2px}.dsd-target-shortcut-link{display:inline-flex;align-items:center;gap:6px;font-size:16px;color:var(--text-color);text-decoration:none}.dsd-target-shortcut-link:hover{text-decoration:underline}"
+}

@@ -5,6 +5,7 @@
 import frappe
 from frappe import _
 
+from sales_performance_dashboard.api.personal_dashboard_api import resolve_personal_scope
 from sales_performance_dashboard.sales_performance_dashboard.dashboards.personal_dashboard import (
     PersonalSalesDashboard,
 )
@@ -21,6 +22,18 @@ def _build_funnel_data(user):
 
     lead_count = len(lead_names)
 
+    # Opportunities created from leads
+    opp_count = 0
+    if lead_names:
+        opp_count = frappe.db.count(
+            "Opportunity",
+            {
+                "opportunity_from": "Lead",
+                "party_name": ["in", lead_names],
+                "name": ["not like", demo],
+            },
+        )
+
     # Customers that originated from those leads
     customer_names = []
     if lead_names:
@@ -34,18 +47,6 @@ def _build_funnel_data(user):
             pluck="name",
         )
     customer_count = len(customer_names)
-
-    # Opportunities created from leads
-    opp_count = 0
-    if lead_names:
-        opp_count = frappe.db.count(
-            "Opportunity",
-            {
-                "opportunity_from": "Lead",
-                "party_name": ["in", lead_names],
-                "name": ["not like", demo],
-            },
-        )
 
     # Quotations for those customers (lead-origin), owner-only
     quotation_count = 0
@@ -99,39 +100,23 @@ def _build_funnel_data(user):
             ],
         )
 
-    # Payment Entries for those customers
-    pe_count = 0
-    if customer_names:
-        pe_count = frappe.db.count(
-            "Payment Entry",
-            filters=[
-                ["docstatus", "=", 1],
-                ["party_type", "=", "Customer"],
-                ["party", "in", customer_names],
-                ["party", "not like", demo],
-                ["owner", "=", user],
-            ],
-        )
-
     labels = [
         _("Lead"),
-        _("Customer"),
         _("Opportunity"),
         _("Quotation"),
+        _("Customer"),
         _("Sales Order"),
         _("Delivery Note"),
         _("Sales Invoice"),
-        _("Payment Entry"),
     ]
     values = [
         lead_count,
-        customer_count,
         opp_count,
         quotation_count,
+        customer_count,
         so_count,
         dn_count,
         si_count,
-        pe_count,
     ]
 
     return {
@@ -139,6 +124,16 @@ def _build_funnel_data(user):
         "datasets": [{"name": _("Funnel"), "values": values}],
         "type": "bar",
     }
+
+
+def _get_scope(filters=None, department=None, employee=None):
+    parsed = frappe.parse_json(filters) if filters else {}
+    if not isinstance(parsed, dict):
+        parsed = {}
+    return resolve_personal_scope(
+        department=department or parsed.get("department"),
+        employee=employee or parsed.get("employee"),
+    )
 
 
 @frappe.whitelist()
@@ -152,13 +147,15 @@ def get_data(
     timespan=None,
     time_interval=None,
     heatmap_year=None,
+    department=None,
+    employee=None,
 ):
-    user = frappe.session.user
-    return _build_funnel_data(user)
+    scope = _get_scope(filters=filters, department=department, employee=employee)
+    return _build_funnel_data(scope["user"])
 
 
 @frappe.whitelist()
-def get_data_for_custom():
+def get_data_for_custom(department=None, employee=None):
     """Endpoint for Custom HTML Block (no chart wrapper)."""
-    user = frappe.session.user
-    return _build_funnel_data(user)
+    scope = _get_scope(department=department, employee=employee)
+    return _build_funnel_data(scope["user"])

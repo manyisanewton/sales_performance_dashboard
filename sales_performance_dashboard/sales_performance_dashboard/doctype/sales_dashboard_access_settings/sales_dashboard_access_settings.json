@@ -28,7 +28,9 @@
     "csd_administrator",
     "targets_access_section",
     "sales_user_targets_mode",
-    "sales_manager_targets_mode"
+    "sales_manager_targets_mode",
+    "finance_settings_section",
+    "annual_financing_rate"
   ],
   "fields": [
     {
@@ -146,6 +148,18 @@
       "label": "Sales Manager Targets Mode",
       "options": "None\nScoped\nAll",
       "default": "All"
+    },
+    {
+      "fieldname": "finance_settings_section",
+      "fieldtype": "Section Break",
+      "label": "Finance Settings"
+    },
+    {
+      "fieldname": "annual_financing_rate",
+      "fieldtype": "Float",
+      "label": "Annual Financing Rate (%)",
+      "default": "18",
+      "description": "Used in Payment Delay Cost calculations for company and department dashboards."
     }
   ],
   "permissions": [

@@ -7,9 +7,20 @@ from frappe import _
 from frappe.utils import add_months, get_first_day, get_last_day, getdate, nowdate
 from frappe.utils.dashboard import cache_source
 
+from sales_performance_dashboard.api.personal_dashboard_api import resolve_personal_scope
 from sales_performance_dashboard.sales_performance_dashboard.dashboards.personal_dashboard import (
     PersonalSalesDashboard,
 )
+
+
+def _get_scope(filters=None, department=None, employee=None):
+    parsed = frappe.parse_json(filters) if filters else {}
+    if not isinstance(parsed, dict):
+        parsed = {}
+    return resolve_personal_scope(
+        department=department or parsed.get("department"),
+        employee=employee or parsed.get("employee"),
+    )
 
 
 @frappe.whitelist()
@@ -24,9 +35,12 @@ def get_data(
     timespan=None,
     time_interval=None,
     heatmap_year=None,
+    department=None,
+    employee=None,
 ):
-    dash = PersonalSalesDashboard()
-    user = dash.user
+    scope = _get_scope(filters=filters, department=department, employee=employee)
+    dash = PersonalSalesDashboard(scope["user"])
+    user = scope["user"]
     demo = dash.demo_pattern
 
     today = getdate(nowdate())

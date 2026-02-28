@@ -7,6 +7,7 @@ from frappe import _
 from frappe.utils import add_months, get_first_day, get_last_day, getdate, nowdate
 from frappe.utils.dashboard import cache_source
 
+from sales_performance_dashboard.api.personal_dashboard_api import resolve_personal_scope
 from sales_performance_dashboard.sales_performance_dashboard.dashboards.personal_dashboard import (
     PersonalSalesDashboard,
 )
@@ -28,6 +29,16 @@ def _month_bins(from_date, to_date):
     return labels, bins
 
 
+def _get_scope(filters=None, department=None, employee=None):
+    parsed = frappe.parse_json(filters) if filters else {}
+    if not isinstance(parsed, dict):
+        parsed = {}
+    return resolve_personal_scope(
+        department=department or parsed.get("department"),
+        employee=employee or parsed.get("employee"),
+    )
+
+
 @frappe.whitelist()
 @cache_source
 def get_data(
@@ -40,8 +51,10 @@ def get_data(
     timespan=None,
     time_interval=None,
     heatmap_year=None,
+    department=None,
+    employee=None,
 ):
-    filters = frappe.parse_json(filters)
+    scope = _get_scope(filters=filters, department=department, employee=employee)
     today = getdate(nowdate())
 
     if not from_date or not to_date:
@@ -54,7 +67,7 @@ def get_data(
 
     labels, bins = _month_bins(from_date, to_date)
 
-    dash = PersonalSalesDashboard()
+    dash = PersonalSalesDashboard(scope["user"])
     demo = dash.demo_pattern
     values = []
 
@@ -68,7 +81,7 @@ def get_data(
               AND customer NOT LIKE %(demo)s
               AND transaction_date BETWEEN %(from_date)s AND %(to_date)s
             """,
-            {"user": frappe.session.user, "demo": demo, "from_date": start, "to_date": end},
+            {"user": scope["user"], "demo": demo, "from_date": start, "to_date": end},
             as_dict=True,
         )
 

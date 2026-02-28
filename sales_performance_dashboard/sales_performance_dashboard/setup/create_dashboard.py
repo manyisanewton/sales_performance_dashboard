@@ -59,8 +59,14 @@ def ensure_personal_dashboard_charts():
         ("Dashboard Chart", "dashboard_chart/personal_forecasted_revenue/personal_forecasted_revenue.json"),
         ("Custom HTML Block", "custom_html_block/personal_item_sales_monthly_table/personal_item_sales_monthly_table.json"),
         ("Custom HTML Block", "custom_html_block/personal_top_customers_table/personal_top_customers_table.json"),
+        ("Custom HTML Block", "custom_html_block/personal_sales_order_analysis_block/personal_sales_order_analysis_block.json"),
+        ("Custom HTML Block", "custom_html_block/personal_project_pipeline/personal_project_pipeline.json"),
+        ("Custom HTML Block", "custom_html_block/personal_project_status_finance/personal_project_status_finance.json"),
+        ("Custom HTML Block", "custom_html_block/personal_project_delivery_health/personal_project_delivery_health.json"),
+        ("Custom HTML Block", "custom_html_block/personal_project_value_billing/personal_project_value_billing.json"),
         ("Custom HTML Block", "custom_html_block/my_sales_targets_shortcut/my_sales_targets_shortcut.json"),
         ("Custom HTML Block", "custom_html_block/revenue_wave_card/revenue_wave_card.json"),
+        ("Custom HTML Block", "custom_html_block/personal_dashboard_filters/personal_dashboard_filters.json"),
     ]
     for doctype, rel_path in items:
         path = os.path.join(base, rel_path)
@@ -96,6 +102,8 @@ def ensure_department_dashboard_assets():
         ("Custom HTML Block", "custom_html_block/department_discount_leakage/department_discount_leakage.json"),
         ("Custom HTML Block", "custom_html_block/department_payment_delay_cost/department_payment_delay_cost.json"),
         ("Custom HTML Block", "custom_html_block/department_top_customers_table/department_top_customers_table.json"),
+        ("Custom HTML Block", "custom_html_block/department_project_pipeline/department_project_pipeline.json"),
+        ("Custom HTML Block", "custom_html_block/department_project_delivery_health/department_project_delivery_health.json"),
         ("Custom HTML Block", "custom_html_block/department_sales_funnel/department_sales_funnel.json"),
     ]
     for doctype, rel_path in items:
@@ -123,6 +131,7 @@ def ensure_company_dashboard_assets():
         ("Custom HTML Block", "custom_html_block/company_target_slippage/company_target_slippage.json"),
         ("Custom HTML Block", "custom_html_block/company_weighted_pipeline_coverage/company_weighted_pipeline_coverage.json"),
         ("Custom HTML Block", "custom_html_block/company_deal_conversion_rate/company_deal_conversion_rate.json"),
+        ("Custom HTML Block", "custom_html_block/company_project_status_finance/company_project_status_finance.json"),
     ]
     for doctype, rel_path in items:
         path = os.path.join(base, rel_path)
@@ -268,6 +277,25 @@ def sync_personal_workspace():
 
     with open(workspace_path, "r", encoding="utf-8") as handle:
         data = json.load(handle)
+
+    # Keep project status & finance block out of Personal workspace.
+    if data.get("content"):
+        content_rows = json.loads(data["content"])
+        content_rows = [
+            row for row in content_rows
+            if not (
+                row.get("id") == "psd-project-status-finance"
+                and row.get("type") == "custom_block"
+            )
+            and row.get("data", {}).get("custom_block_name") != "Personal Project Status & Finance"
+        ]
+        data["content"] = json.dumps(content_rows)
+
+    data["custom_blocks"] = [
+        row
+        for row in (data.get("custom_blocks") or [])
+        if row.get("custom_block_name") != "Personal Project Status & Finance"
+    ]
 
     name = data.get("name") or "Personal Sales Dashboard"
     if frappe.db.exists("Workspace", name):
